@@ -1,0 +1,16 @@
+# --- Core Communication & Hardware Bridge ---
+pyserial==3.5          # Standard library for Serial communication with Arduino Nano
+
+# --- Data Science & Engineering Math ---
+numpy==1.26.4          # Optimized for Trigonometric (Polar-to-Cartesian) calculations
+pandas==2.2.0          # High-performance data structures for scan session logs
+
+# --- Database & Persistence Layer ---
+pymongo==4.6.1         # Official MongoDB driver for saving/loading LiDAR data
+
+# --- Visualization & Dashboard UI ---
+streamlit==1.31.0      # Framework for the real-time web-based radar interface
+plotly==5.18.0         # High-fidelity interactive charts for point-cloud mapping
+
+# --- System Utilities ---
+python-dotenv==1.0.1   # For managing local environment variables (like COM ports)
