@@ -16,9 +16,11 @@ siScanner is a 2D LiDAR scanning system designed for industrial spatial auditing
 
 #### Software Layer
 - Firmware: C++ (Arduino IDE) with optimized Region of Interest (ROI) beam-narrowing.
-- Data Pipeline: Python-based Serial-to-JSON bridge.
+- Desktop Engine (Python 3.10+): 
+    - PyQt6 Framework: Native macOS/Windows/Linux UI for zero-latency interaction.
+    - PyQtGraph: High-performance, GPU-accelerated graphics engine for real-time 2D point-cloud rendering.
+- Data Pipeline: Multithreaded `SerialWorker` that decouples hardware I/O from UI rendering to prevent frame-drops.
 - Database: MongoDB for persistent storage of scan sessions (Temporal Data).
-- Visualization: Streamlit Dashboard with Plotly interactive point-cloud rendering.
 
 
 ## Project Structure
@@ -41,21 +43,6 @@ siScanner/
 └── README.md                      # Documentation: Setup & Usage
 ```
 
-## Technical Note: Dependency Resolution
+## Technical Note:
 
-During environment setup, a versioning conflict may occur between Streamlit and Wheel regarding the `packaging` utility.
-- Conflict: Streamlit (v1.31.0) requires `packaging < 24.0`, while modern Wheel versions require `packaging >= 24.0`.
-- Resolution: Use the **Conda-First** installation strategy to allow the Conda SAT solver to stabilize the environment foundation before installing UI components.
-
-#### Recommended Setup Sequence
-
-```
-# Bash Command
-
-# 1. Create environment with core math foundations
-conda create --name sentinel-v python=3.10 numpy pandas packaging -c conda-forge -y
-conda activate sentinel-v
-
-# 2. Install UI and Database bridges
-pip install streamlit==1.31.0 plotly pymongo pyserial python-dotenv
-```
+(none)
