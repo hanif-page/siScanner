@@ -1,16 +1,16 @@
 # --- Core Communication & Hardware Bridge ---
-pyserial==3.5          # Standard library for Serial communication with Arduino Nano
+pyserial==3.5          # Communication with Arduino Nano
+
+# --- Desktop UI & High-Speed Rendering ---
+PyQt6==6.6.1           # Native desktop framework (Replacing Streamlit)
+pyqtgraph==0.13.3      # Scientific plotting (Replacing Plotly for speed)
 
 # --- Data Science & Engineering Math ---
-numpy==1.26.4          # Optimized for Trigonometric (Polar-to-Cartesian) calculations
-pandas==2.2.0          # High-performance data structures for scan session logs
+numpy==1.26.4          # Required for vectorized coordinate transformations
+pandas==2.2.1          # Data manipulation and database interfacing
 
 # --- Database & Persistence Layer ---
-pymongo==4.6.1         # Official MongoDB driver for saving/loading LiDAR data
-
-# --- Visualization & Dashboard UI ---
-streamlit==1.31.0      # Framework for the real-time web-based radar interface
-plotly==5.18.0         # High-fidelity interactive charts for point-cloud mapping
+pymongo==4.6.1         # MongoDB driver for scan storage
 
 # --- System Utilities ---
-python-dotenv==1.0.1   # For managing local environment variables (like COM ports)
+python-dotenv==1.0.1   # Managing environment variables (Port names/DB URIs)

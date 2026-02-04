@@ -11,7 +11,7 @@ def run_siScanner_simulator():
     # Simulate a 180-degree sweep with points every degree
     for angle in range(181):
         # Simulating a dynamic distance
-        distance = 1800 + random.randint(-20, 20)
+        distance = 1800 + random.randint(-200, 200)
         theta = math.radians(angle)
         x = round(distance * math.cos(theta), 2)
         y = round(distance * math.sin(theta), 2)

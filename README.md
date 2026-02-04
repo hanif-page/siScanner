@@ -26,14 +26,19 @@ siScanner is a 2D LiDAR scanning system designed for industrial spatial auditing
 siScanner/
 ├── firmware/
 │   └── lidar_scanner/
-│       └── lidar_scanner.ino      # Arduino C++ logic
+│       └── lidar_scanner.ino      # Arduino C++: Servo control & Sensor reading
 ├── app/
-│   ├── dashboard.py               # Streamlit UI & Visuals
-│   ├── processor.py               # Polar-to-Cartesian conversion
-│   └── database.py                # MongoDB connection logic
-├── requirements.txt               # Python dependencies
-├── .gitignore                     # Git exclusion rules
-└── README.md                      # Documentation
+│   ├── __init__.py                # Package marker (empty)
+│   ├── database.py                # MongoDB: Save/Load scan sessions
+│   ├── processor.py               # Math: Polar-to-Cartesian logic
+│   ├── serial_worker.py           # Threading: Async Serial listener for Nano
+│   └── styles.qss                 # UI Styling: Modern "Dark Mode" stylesheet
+├── main.py                        # Entry Point: PyQt6 App & Main Window
+├── simulate_data.py               # Testing: Virtual sweep generator
+├── .env                           # Config: SERIAL_PORT=/dev/cu.usbserial...
+├── .gitignore                     # Git rules: ignore __pycache__, .env, etc.
+├── requirements.txt               # Updated PyQt6 dependencies
+└── README.md                      # Documentation: Setup & Usage
 ```
 
 ## Technical Note: Dependency Resolution
