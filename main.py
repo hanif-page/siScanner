@@ -1,149 +1,154 @@
 import sys
 import numpy as np
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QPushButton, QComboBox, QLabel)
+                             QHBoxLayout, QPushButton, QComboBox, QLabel, 
+                             QGraphicsEllipseItem, QSplitter, QFrame)
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPen, QColor
 import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 from app.database import SiScannerDatabase
 
 class SiScannerApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("siScanner | Industrial Desktop Terminal")
-        self.resize(1100, 800)
-        
-        # Initialize Database
+        self.setWindowTitle("siScanner | Volumetric 3D Terminal")
+        self.resize(1500, 900)
         self.db = SiScannerDatabase()
-        
-        # Setup UI
         self.init_ui()
         self.load_sessions()
 
     def init_ui(self):
-        # Main Layout
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         layout = QHBoxLayout(main_widget)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # --- Sidebar (Controls) ---
-        sidebar = QVBoxLayout()
-        sidebar.setContentsMargins(10, 10, 10, 10)
+        # --- Sidebar ---
+        sidebar_widget = QWidget()
+        sidebar_widget.setFixedWidth(320)
+        sidebar = QVBoxLayout(sidebar_container := sidebar_widget) # Using walrus for clarity
         
-        self.label = QLabel("siScanner")
-        self.label.setStyleSheet("font-size: 18px; font-weight: bold; color: #333333;")
+        self.label = QLabel("📡 siScanner 3D")
+        self.label.setStyleSheet("font-size: 24px; font-weight: bold; color: #1e3a8a; margin-bottom: 5px;")
         sidebar.addWidget(self.label)
 
-        sidebar.addWidget(QLabel("Select Scan Session:"))
+        # --- NEW: WARNING BANNER ---
+        self.warning_note = QLabel("⚠️ SYSTEM NOTE: Color-depth calculation is currently disabled. Rendering in flat-blue mode.")
+        self.warning_note.setWordWrap(True)
+        self.warning_note.setStyleSheet("""
+            background-color: #fee2e2; 
+            color: #991b1b; 
+            padding: 10px; 
+            border-radius: 6px; 
+            border: 1px solid #fecaca;
+            font-size: 11px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        """)
+        sidebar.addWidget(self.warning_note)
+        
+        sidebar.addWidget(QLabel("📂 Scan History:"))
         self.session_box = QComboBox()
+        self.session_box.setStyleSheet("padding: 5px; border: 1px solid #d1d5db; border-radius: 4px;")
         sidebar.addWidget(self.session_box)
 
-        self.btn_load = QPushButton("Render Spatial Map")
-        self.btn_load.setMinimumHeight(40)
-        self.btn_load.setStyleSheet("background-color: #1f2937; color: white; font-weight: bold;")
+        self.btn_load = QPushButton("🚀 GENERATE PROJECTION")
+        self.btn_load.setMinimumHeight(55)
+        self.btn_load.setStyleSheet("background-color: #2563eb; color: white; font-weight: bold; border-radius: 8px;")
         self.btn_load.clicked.connect(self.plot_data)
         sidebar.addWidget(self.btn_load)
 
-        sidebar.addStretch() # Push items to the top
+        # --- Telemetry Dashboard ---
+        sidebar.addSpacing(20)
+        self.telemetry_panel = QFrame()
+        self.telemetry_panel.setStyleSheet("background-color: #f3f4f6; border-radius: 10px; border: 1px solid #e5e7eb;")
+        tel_layout = QVBoxLayout(self.telemetry_panel)
         
-        # Metrics Display
-        self.metrics_label = QLabel("Status: Standby")
-        sidebar.addWidget(self.metrics_label)
+        self.radius_label = QLabel("Max Radius: --- mm")
+        self.height_label = QLabel("Avg Height: --- mm")
+        self.point_label = QLabel("Data Nodes: ---")
         
-        layout.addLayout(sidebar, 1) # Sidebar takes 25% width
+        for lbl in [self.radius_label, self.height_label, self.point_label]:
+            lbl.setStyleSheet("font-size: 15px; color: #111827; font-family: 'Courier New'; padding: 2px;")
+            tel_layout.addWidget(lbl)
+        sidebar.addWidget(self.telemetry_panel)
+        sidebar.addStretch()
+        
+        layout.addWidget(sidebar_widget, 1)
 
-        # --- Main View (The Radar) ---
-        self.plot_widget = pg.PlotWidget()
-        
-        # 1. Background: Light Gray/White
-        self.plot_widget.setBackground('#f3f4f6') # A clean, professional light gray
-        self.plot_widget.setAspectLocked(True)
-        
-        # 2. Circular Grid Lines (Radar Rings)
-        from PyQt6.QtWidgets import QGraphicsEllipseItem
-        from PyQt6.QtGui import QPen, QColor
+        # --- Viewports ---
+        self.radar_widget = pg.PlotWidget()
+        self.radar_widget.setBackground('#f9fafb')
+        self.radar_widget.setAspectLocked(True)
+        self.init_radar_grid()
+        self.scatter_2d = pg.ScatterPlotItem(size=6, pen=None)
+        self.radar_widget.addItem(self.scatter_2d)
 
-        # Darker gray for the grid lines to ensure visibility on light background
-        grid_pen = QPen(QColor('#d1d5db'), 1, Qt.PenStyle.DashLine) 
+        self.view_3d = gl.GLViewWidget()
+        self.view_3d.setBackgroundColor('#05070a')
+        self.view_3d.setCameraPosition(distance=4000, elevation=30, azimuth=45)
+        grid = gl.GLGridItem()
+        grid.setSize(8000, 8000, 1)
+        grid.setSpacing(500, 500, 1)
+        self.view_3d.addItem(grid)
 
-        for r in range(500, 3001, 500):
+        self.splitter.addWidget(self.radar_widget)
+        self.splitter.addWidget(self.view_3d)
+        layout.addWidget(self.splitter, 5)
+
+    def init_radar_grid(self):
+        grid_pen = QPen(QColor('#d1d5db'), 1, Qt.PenStyle.DashLine)
+        for r in range(500, 4001, 500):
             circle = QGraphicsEllipseItem(-r, -r, r*2, r*2)
             circle.setPen(grid_pen)
-            self.plot_widget.addItem(circle)
-
-        # 3. Distance Labels
-        for r in range(500, 3001, 1000):
-            text = pg.TextItem(text=f"{r}mm", color='#374151', anchor=(0, 1))
-            text.setPos(0, r)
-            self.plot_widget.addItem(text)
-
-        # 4. The Scatter Item (Data Points)
-        # We add a thin border (pen) to the dots so they don't blend into the light background
-        self.scatter = pg.ScatterPlotItem(
-            size=12, 
-            pen=pg.mkPen('white', width=0.5), # High-contrast outline
-            hoverable=True
-        )
-        self.plot_widget.addItem(self.scatter)
-        
-        # Center marker (Scanner position)
-        self.plot_widget.addItem(pg.ScatterPlotItem(pos=[[0,0]], size=15, brush=pg.mkBrush('#ef4444')))
-
-        layout.addWidget(self.plot_widget, 4) # Radar takes 75% width
+            self.radar_widget.addItem(circle)
 
     def load_sessions(self):
-        """Pulls session list from MongoDB into the dropdown."""
         sessions = self.db.get_all_sessions()
-        self.session_data = {str(s['timestamp']): s['_id'] for s in sessions}
-        self.session_box.addItems(list(self.session_data.keys()))
+        self.session_data = {f"{s['timestamp'].strftime('%H:%M:%S')} | {s.get('scan_mode', 'N/A')}": s['_id'] for s in sessions}
+        self.session_box.addItems(self.session_data.keys())
 
     def plot_data(self):
-        """Renders points with a Red-to-Blue distance gradient."""
-        selected_time = self.session_box.currentText()
-        if not selected_time: return
+        selected = self.session_box.currentText()
+        if not selected: return
+        scan = self.db.get_session_by_id(self.session_data[selected])
+        if not (scan and 'data' in scan): return
+
+        for item in self.view_3d.items[:]:
+            if isinstance(item, (gl.GLMeshItem, gl.GLScatterPlotItem)):
+                self.view_3d.removeItem(item)
+
+        points = scan['data']
+        dists = np.array([p['dist'] for p in points])
         
-        session_id = self.session_data.get(selected_time)
-        scan = self.db.get_session_by_id(session_id)
-        
-        if scan and 'data' in scan:
-            points = scan['data']
-            spots = []
+        self.radius_label.setText(f"Max Radius: {int(np.max(dists))} mm")
+        self.height_label.setText(f"Avg Height: {int(2 * np.mean(dists) * np.tan(np.radians(13.5)))} mm")
+        self.point_label.setText(f"Data Nodes: {len(points)}")
 
-            # Define our range for the gradient (adjust based on your room size)
-            NEAR_LIMIT = 500   # mm
-            FAR_LIMIT = 2500   # mm
+        # --- FLAT BLUE RENDER ---
+        spots_2d = [{'pos': (p['x'], p['y']), 'brush': pg.mkBrush(30, 144, 255, 200)} for p in points]
+        self.scatter_2d.setData(spots_2d)
 
-            for p in points:
-                try:
-                    x, y = float(p.get('x', 0)), float(p.get('y', 0))
-                    d = float(p.get('dist', 0))
-                    if x == 0 and y == 0: continue
+        angle_list = sorted(list(set(p['angle'] for p in points)))
+        num_v, num_h = 13, len(angle_list)
+        grid = np.zeros((num_h, num_v, 3))
+        for p in points:
+            try:
+                grid[angle_list.index(p['angle'])][p['roi_index']] = [p['x'], p['y'], p['z']]
+            except: continue
 
-                    # --- COLOR INTERPOLATION LOGIC ---
-                    # Clamp distance to our limits
-                    d_clamped = max(NEAR_LIMIT, min(d, FAR_LIMIT))
-                    
-                    # Calculate ratio (0.0 = Near, 1.0 = Far)
-                    ratio = (d_clamped - NEAR_LIMIT) / (FAR_LIMIT - NEAR_LIMIT)
-                    
-                    # Interpolate: Red decreases as Blue increases
-                    r = int(255 * (1 - ratio))
-                    b = int(255 * ratio)
-                    g = 0 # Keep it clean on the Red-Blue spectrum
+        verts = grid.reshape(-1, 3)
+        faces, face_colors = [], []
+        for i in range(num_h - 1):
+            for j in range(num_v - 1):
+                p1, p2, p3, p4 = i*num_v+j, (i+1)*num_v+j, (i+1)*num_v+(j+1), i*num_v+(j+1)
+                faces.extend([[p1, p2, p3], [p1, p3, p4]])
+                face_colors.extend([[0.1, 0.5, 0.9, 0.6]] * 2) # Solid semi-transparent blue
 
-                    spots.append({
-                        'pos': (x, y),
-                        'size': 10,
-                        'brush': pg.mkBrush(r, g, b, 200), # 200 is alpha/transparency
-                        'pen': pg.mkPen(None)
-                    })
-                except Exception as e:
-                    print(f"Error processing point: {e}")
-
-            if spots:
-                self.scatter.setData(spots)
-                # Keep view focused on the 180° front-arc
-                self.plot_widget.setRange(xRange=[-3000, 3000], yRange=[0, 3000])
-                self.metrics_label.setText(f"Status: {len(spots)} points (R: Near -> B: Far)")
+        mesh_data = gl.MeshData(vertexes=verts, faces=np.array(faces), faceColors=np.array(face_colors))
+        mesh_item = gl.GLMeshItem(meshdata=mesh_data, smooth=True, drawEdges=True, edgeColor=(1,1,1,0.2))
+        self.view_3d.addItem(mesh_item)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
